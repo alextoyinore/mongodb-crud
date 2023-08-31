@@ -65,7 +65,10 @@ function main() {
 
     // deleteListingByName(client, 'Beautiful Cottage')
 
-    deleteListingScrapedBeforeDate(client, new Date("2019-02-15"))
+    // deleteListingScrapedBeforeDate(client, new Date("2019-02-15"))
+
+    // AGGREGATES
+    printCheapestSuburbs(client, 'Australia', 'Sydney', 5)
 }
 
 main()
@@ -208,6 +211,51 @@ function deleteListingScrapedBeforeDate(client, date){
         console.log(`${result.deletedCount} document(s) were deleted`)
     }).catch(err => {
         console.error(err)
+    })
+}
+
+
+// AGGREGATION
+
+function printCheapestSuburbs(client, country, market, limit){
+    const pipeline = [
+        {
+            '$match': {
+            'bedrooms': 1, 
+            'address.country': country, 
+            'address.market': market, 
+            'address.suburb': {
+                '$exists': 1, 
+                '$ne': ''
+            }, 
+            'room_type': 'Entire home/apt'
+            }
+        }, {
+            '$group': {
+            '_id': '$address.suburb', 
+            'averagePrice': {
+                '$avg': '$price'
+            }
+            }
+        }, {
+            '$sort': {
+            'averagePrice': 1
+            }
+        }, {
+            '$limit': limit
+        }
+    ]
+    
+
+    client.db('sample_airbnb')
+    .collection('listingsAndReviews')
+    .aggregate(pipeline).toArray()
+    .then(results => {
+        results.forEach(result => {
+            console.log(`${result._id}: ${result.averagePrice}`)
+        })
+    }).catch(err => {
+        console.log(err)
     })
 }
 
